@@ -28,7 +28,7 @@ namespace {
 YARP_LOG_COMPONENT(REALSENSE2, "yarp.device.realsense2")
 }
 
-
+constexpr char preset         [] = "preset";
 constexpr char accuracy       [] = "accuracy";
 constexpr char clipPlanes     [] = "clipPlanes";
 constexpr char depthRes       [] = "depthResolution";
@@ -41,6 +41,7 @@ constexpr char alignmentFrame [] = "alignmentFrame";
 
 static std::map<std::string, RGBDSensorParamParser::RGBDParam> params_map =
 {
+    {preset,         RGBDSensorParamParser::RGBDParam(preset,          1)},
     {accuracy,       RGBDSensorParamParser::RGBDParam(accuracy,        1)},
     {clipPlanes,     RGBDSensorParamParser::RGBDParam(clipPlanes,      2)},
     {depthRes,       RGBDSensorParamParser::RGBDParam(depthRes,        2)},
@@ -55,6 +56,11 @@ static const std::map<std::string, rs2_stream> stringRSStreamMap {
     {"None",  RS2_STREAM_ANY},
     {"RGB",  RS2_STREAM_COLOR},
     {"Depth", RS2_STREAM_DEPTH}
+};
+
+static const std::map<std::string, rs2_rs400_visual_preset> stringRSPresetMap {
+    {"highaccuracy", RS2_RS400_VISUAL_PRESET_HIGH_ACCURACY},
+    {"default", RS2_RS400_VISUAL_PRESET_DEFAULT}
 };
 
 
@@ -114,7 +120,6 @@ static void print_supported_options(const rs2::sensor& sensor)
             std::cout << "       Current Value : " << current_value << std::endl;
         }
     }
-
     std::cout<<std::endl;
 }
 
@@ -638,6 +643,18 @@ void realsense2Driver::updateTransformations()
 bool realsense2Driver::setParams()
 {
     bool ret = true;
+
+    //Preset
+    if (params_map[preset].isSetting && ret)
+    {
+        if (!params_map[preset].val[0].isString() )
+            settingErrorMsg("Param " + params_map[preset].name + " is not a string as it should be.", ret);
+
+        if (! setPreset(params_map[preset].val[0].asString() ) )
+            settingErrorMsg("Setting param " + params_map[preset].name + " failed... quitting.", ret);
+    }
+
+
     //ACCURACY
     if (params_map[accuracy].isSetting && ret)
     {
@@ -916,6 +933,23 @@ bool realsense2Driver::setDepthAccuracy(double accuracy)
     if (ok) {
         m_scale = accuracy;
     }
+    return ok;
+}
+
+bool realsense2Driver::setPreset(std::string preset)
+{
+    std::lock_guard<std::mutex> guard(m_mutex);
+
+    bool ok = true;
+
+    if(preset == "highaccuracy") {
+        ok = setOption(RS2_OPTION_VISUAL_PRESET, m_depth_sensor,
+        rs2_rs400_visual_preset::RS2_RS400_VISUAL_PRESET_HIGH_ACCURACY);
+    } else {
+        ok = setOption(RS2_OPTION_VISUAL_PRESET, m_depth_sensor,
+        rs2_rs400_visual_preset::RS2_RS400_VISUAL_PRESET_DEFAULT);
+    }
+
     return ok;
 }
 

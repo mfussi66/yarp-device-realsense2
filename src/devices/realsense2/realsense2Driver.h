@@ -67,6 +67,7 @@ public:
     bool   getDepthIntrinsicParam(Property& intrinsic) override;
     double getDepthAccuracy() override;
     bool   setDepthAccuracy(double accuracy) override;
+    bool   setPreset(std::string preset);
     bool   getDepthClipPlanes(double& nearPlane, double& farPlane) override;
     bool   setDepthClipPlanes(double nearPlane, double farPlane) override;
     bool   getDepthMirroring(bool& mirror) override;

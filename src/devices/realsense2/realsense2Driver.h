@@ -148,6 +148,7 @@ protected:
     bool m_needAlignment;
     int m_fps;
     float m_scale;
+    std::string m_preset;
     bool m_rotateImage180{false};
     std::vector<cameraFeature_id_t> m_supportedFeatures;
 };

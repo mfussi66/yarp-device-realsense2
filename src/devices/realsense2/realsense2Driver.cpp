@@ -37,6 +37,8 @@ constexpr char framerate      [] = "framerate";
 constexpr char enableEmitter  [] = "enableEmitter";
 constexpr char needAlignment  [] = "needAlignment";
 constexpr char alignmentFrame [] = "alignmentFrame";
+constexpr char emitterFrequency [] = "emitterFrequency";
+constexpr char powerLineFrequency [] = "powerLineFrequency";
 
 
 static std::map<std::string, RGBDSensorParamParser::RGBDParam> params_map =
@@ -49,7 +51,10 @@ static std::map<std::string, RGBDSensorParamParser::RGBDParam> params_map =
     {framerate,      RGBDSensorParamParser::RGBDParam(framerate,       1)},
     {enableEmitter,  RGBDSensorParamParser::RGBDParam(enableEmitter,   1)},
     {needAlignment,  RGBDSensorParamParser::RGBDParam(needAlignment,   1)},
-    {alignmentFrame, RGBDSensorParamParser::RGBDParam(alignmentFrame,  1)}
+    {alignmentFrame, RGBDSensorParamParser::RGBDParam(alignmentFrame,  1)},
+    {emitterFrequency, RGBDSensorParamParser::RGBDParam(emitterFrequency,  1)},
+    {powerLineFrequency, RGBDSensorParamParser::RGBDParam(powerLineFrequency,  1)}
+
 };
 
 static const std::map<std::string, rs2_stream> stringRSStreamMap {
@@ -105,7 +110,6 @@ static void print_supported_options(const rs2::sensor& sensor)
         //SDK enum types can be streamed to get a string that represents them
 
         // To control an option, use the following api:
-
         // First, verify that the sensor actually supports this option
         if (sensor.supports(option_type))
         {
@@ -439,7 +443,8 @@ realsense2Driver::realsense2Driver() : m_depth_sensor(nullptr), m_color_sensor(n
                                        m_paramParser(), m_verbose(false),
                                        m_initialized(false), m_stereoMode(false),
                                        m_needAlignment(true), m_fps(0),
-                                       m_scale(0.0), m_preset("default")
+                                       m_scale(0.0), m_preset("default"),
+                                       m_emitterFrequency(91), m_powerLineFrequency(1)
 {
     // realsense SDK already provides them
     m_paramParser.depthIntrinsic.isOptional = true;
@@ -544,6 +549,8 @@ bool realsense2Driver::initializeRealsenseDevice()
     double colorH = params_map[rgbRes].val[1].asFloat64();
     double depthW = params_map[depthRes].val[0].asFloat64();
     double depthH = params_map[depthRes].val[1].asFloat64();
+
+    setEmitterFrequency(1);
 
     m_cfg.enable_stream(RS2_STREAM_COLOR, colorW, colorH, RS2_FORMAT_RGB8, m_fps);
     m_cfg.enable_stream(RS2_STREAM_DEPTH, depthW, depthH, RS2_FORMAT_Z16, m_fps);
@@ -716,6 +723,8 @@ bool realsense2Driver::setParams()
             settingErrorMsg("Setting param " + params_map[enableEmitter].name + " failed... quitting.", ret);
         }
     }
+
+    setPowerLineFrequency(50);
 
     //ALIGNMENT
     if (params_map[needAlignment].isSetting && ret)
@@ -945,6 +954,27 @@ bool realsense2Driver::setDepthAccuracy(double accuracy)
     return ok;
 }
 
+bool realsense2Driver::setEmitterFrequency(int freq)
+{
+    std::lock_guard<std::mutex> guard(m_mutex);
+    bool ok = setOption(RS2_OPTION_EMITTER_FREQUENCY, m_depth_sensor, RS2_EMITTER_FREQUENCY_91_KHZ);
+    if (ok) {
+        m_emitterFrequency = freq;
+    }
+    return ok;
+}
+
+bool realsense2Driver::setPowerLineFrequency(int freq)
+{
+    std::lock_guard<std::mutex> guard(m_mutex);
+    bool ok = setOption(RS2_OPTION_POWER_LINE_FREQUENCY, m_color_sensor, 1);
+    if (ok) {
+        m_powerLineFrequency = freq;
+    }
+    return ok;
+}
+
+
 bool realsense2Driver::setPreset(std::string preset)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
@@ -1170,6 +1200,7 @@ bool realsense2Driver::getImage(depthImage& Frame, Stamp *timeStamp, const rs2::
     float powCoeff = pow(10.0f, (float) m_depthDecimalNum);
     for(int i = 0; i < w * h; i++)
     {
+
         if (m_rotateImage180) {
             rawImage[i] = m_scale * rawImageRs[(w * h) - i -1];
         }else {

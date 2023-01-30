@@ -98,6 +98,9 @@ public:
     bool   setMode(   int feature, FeatureMode mode) override;
     bool   getMode(   int feature, FeatureMode *mode) override;
     bool   setOnePush(int feature) override;
+    bool   setEmitterFrequency(int freq);
+    bool   setPowerLineFrequency(int freq);
+
 
     //IFrameGrabberImageRaw
     bool getImage(yarp::sig::ImageOf<yarp::sig::PixelMono>& image) override;
@@ -149,6 +152,8 @@ protected:
     int m_fps;
     float m_scale;
     std::string m_preset;
+    int m_powerLineFrequency;
+    int m_emitterFrequency;
     bool m_rotateImage180{false};
     std::vector<cameraFeature_id_t> m_supportedFeatures;
 };
